@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-		sendNotification('Started', 'test@example.com')
+		sendNotification('Started', 'team@example.com')
                 git branch: 'notifications',
                     url: 'https://github.com/chris1867/DO400-apps'
             }
@@ -19,17 +19,24 @@ pipeline {
 	stage('Check Style') {
             steps {
                 dir('simple-calculator') {
-                    sh './mvnw clean checkstyle:check'
+		    script {
+                	try {
+	                    sh './mvnw clean checkstyle:check'
+		        } catch (Exception e) {
+	                    sendWarningAlert("${STAGE_NAME}", 'devs@example.com')
+	                    unstable("${STAGE_NAME} stage failed!")
+	   	        }
+		    }
                 }
             }
         }
     }
     post {
 	failure {
-	    sendNotification('test@example.com')
+	    sendFailureAlert('team@example.com')
 	}
 	always {
-	    sendNotification('finished', 'test@example.com')
+	    sendNotification('finished', 'team@example.com')
 	}
     }
 }
@@ -42,4 +49,9 @@ void sendFailureAlert(String email) {
     mail to: "${email}",
         subject: "Pipeline failed: ${currentBuild.fullDisplayName}",
         body: "The following pipeline failed: ${env.BUILD_URL}"
+}
+void sendWarningAlert(String stage, String email) {
+    mail to: "${email}",
+        subject: "${stage} stage failed: ${currentBuild.fullDisplayName}",
+        body: "The ${stage} stage failed: ${env.BUILD_URL}"
 }
